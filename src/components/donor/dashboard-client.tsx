@@ -8,7 +8,7 @@ import { signOut } from '@/lib/actions/auth'
 type Profile = { id: string; first_name: string; blood_group: string; available: boolean }
 type Request = {
   id: string; blood_group: string; urgency: string; units: number; notes: string;
-  created_at: string; hospitals: { org_name: string; address: string }
+  created_at: string; hospitals: { org_name: string; address: string; city: string }
 }
 type Donation = {
   id: string; created_at: string;
@@ -200,7 +200,7 @@ export function DonorDashboardClient({ profile, requests, donations }: {
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-800">{d.blood_requests?.hospitals?.org_name}</p>
                         <p className="text-xs text-gray-400">
-                          {new Date(d.blood_requests?.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} · {d.blood_requests?.blood_group}
+                          {new Date(d.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} · {d.blood_requests?.blood_group}
                         </p>
                       </div>
                     </div>

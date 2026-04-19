@@ -15,13 +15,22 @@ export default async function DonorDashboardPage() {
 
   if (!profile) redirect('/register')
 
-  const { data: requests } = await supabase
+  // Fetch all open requests matching blood group, then filter by donor city in JS.
+  // PostgREST cannot filter on embedded relation columns server-side, so we
+  // fetch hospital city via the join and apply the city match after.
+  const { data: allRequests } = await supabase
     .from('blood_requests')
-    .select('*, hospitals:profiles!blood_requests_hospital_id_fkey(org_name, address)')
+    .select('*, hospitals:profiles!blood_requests_hospital_id_fkey(org_name, address, city)')
     .eq('status', 'open')
     .eq('blood_group', profile.blood_group)
     .order('urgency_rank', { ascending: true })
     .order('created_at', { ascending: false })
+
+  const donorCity = (profile.city ?? '').trim().toLowerCase()
+  const requests = (allRequests ?? []).filter((r) => {
+    const hospitalCity = (r.hospitals?.city ?? '').trim().toLowerCase()
+    return donorCity && hospitalCity ? hospitalCity === donorCity : true
+  })
 
   const { data: donations } = await supabase
     .from('acceptances')
