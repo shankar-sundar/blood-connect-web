@@ -28,8 +28,9 @@ export default async function DonorDashboardPage() {
 
   const donorCity = (profile.city ?? '').trim().toLowerCase()
   const requests = (allRequests ?? []).filter((r) => {
+    if (!donorCity) return true                                    // donor has no city — show all
     const hospitalCity = (r.hospitals?.city ?? '').trim().toLowerCase()
-    return donorCity && hospitalCity ? hospitalCity === donorCity : true
+    return hospitalCity === donorCity                              // strict match; skip unknown-city hospitals
   })
 
   const { data: donations } = await supabase

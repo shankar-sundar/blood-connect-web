@@ -93,15 +93,16 @@ create temp table _hospitals (
   id          uuid primary key default gen_random_uuid(),
   email       text, org_name text, org_type text,
   mobile      text, address text, license_no text,
+  city        text,
   lat         double precision, lng double precision
 );
 
-insert into _hospitals (email,org_name,org_type,mobile,address,license_no,lat,lng) values
-('aiims.delhi@seed.bloodconnect',     'AIIMS Delhi',                      'Government Hospital','+91 11 2658 8500','Ansari Nagar East, New Delhi — 110029',    'DL-BB-2020-00001',28.5672,77.2100),
-('fortis.gurugram@seed.bloodconnect', 'Fortis Memorial Research Institute','Private Hospital',  '+91 12 4962 9000','Sector 44, Gurugram, Haryana — 122002',     'HR-BB-2018-00042',28.4595,77.0266),
-('apollo.mumbai@seed.bloodconnect',   'Apollo Hospitals Juhu',            'Private Hospital',  '+91 22 6260 0000','Juhu, Mumbai, Maharashtra — 400049',         'MH-BB-2015-00089',19.0990,72.8270),
-('manipal.bangalore@seed.bloodconnect','Manipal Hospitals',               'Private Hospital',  '+91 80 2502 4444','Old Airport Road, Bangalore — 560017',       'KA-BB-2017-00031',12.9592,77.6481),
-('yashoda.hyderabad@seed.bloodconnect','Yashoda Hospitals',               'Private Hospital',  '+91 40 4567 4567','Somajiguda, Hyderabad — 500082',             'TG-BB-2016-00057',17.4337,78.4489);
+insert into _hospitals (email,org_name,org_type,mobile,address,license_no,city,lat,lng) values
+('aiims.delhi@seed.bloodconnect',     'AIIMS Delhi',                      'Government Hospital','+91 11 2658 8500','Ansari Nagar East, New Delhi — 110029',    'DL-BB-2020-00001','New Delhi', 28.5672,77.2100),
+('fortis.gurugram@seed.bloodconnect', 'Fortis Memorial Research Institute','Private Hospital',  '+91 12 4962 9000','Sector 44, Gurugram, Haryana — 122002',     'HR-BB-2018-00042','Gurugram',  28.4595,77.0266),
+('apollo.mumbai@seed.bloodconnect',   'Apollo Hospitals Juhu',            'Private Hospital',  '+91 22 6260 0000','Juhu, Mumbai, Maharashtra — 400049',         'MH-BB-2015-00089','Mumbai',    19.0990,72.8270),
+('manipal.bangalore@seed.bloodconnect','Manipal Hospitals',               'Private Hospital',  '+91 80 2502 4444','Old Airport Road, Bangalore — 560017',       'KA-BB-2017-00031','Bangalore', 12.9592,77.6481),
+('yashoda.hyderabad@seed.bloodconnect','Yashoda Hospitals',               'Private Hospital',  '+91 40 4567 4567','Somajiguda, Hyderabad — 500082',             'TG-BB-2016-00057','Hyderabad', 17.4337,78.4489);
 
 
 -- ── INSERT AUTH USERS ────────────────────────────────────────────
@@ -121,8 +122,8 @@ insert into public.profiles (id,role,first_name,last_name,mobile,blood_group,cit
 select id,'donor',first_name,last_name,mobile,blood_group,city,lat,lng,dob,gender,available
 from _donors;
 
-insert into public.profiles (id,role,org_name,org_type,mobile,address,license_no)
-select id,'hospital',org_name,org_type,mobile,address,license_no
+insert into public.profiles (id,role,org_name,org_type,mobile,address,license_no,city,lat,lng)
+select id,'hospital',org_name,org_type,mobile,address,license_no,city,lat,lng
 from _hospitals;
 
 
