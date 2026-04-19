@@ -76,7 +76,7 @@ create table public.acceptances (
   id          uuid primary key default gen_random_uuid(),
   request_id  uuid not null references public.blood_requests(id) on delete cascade,
   donor_id    uuid not null references public.profiles(id) on delete cascade,
-  status      text not null check (status in ('accepted','donated')) default 'accepted',
+  status      text not null check (status in ('accepted','donated','rejected')) default 'accepted',
   created_at  timestamptz default now(),
   unique (request_id, donor_id)
 );

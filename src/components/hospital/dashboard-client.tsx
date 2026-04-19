@@ -3,17 +3,21 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { signOut } from '@/lib/actions/auth'
+import { createClient } from '@/lib/supabase/client'
 
 type Donor = { id: string; first_name: string; last_name: string; mobile: string }
-type Acceptance = { id: string; status: 'accepted' | 'donated'; donor: Donor }
+type Acceptance = { id: string; status: 'accepted' | 'donated' | 'rejected'; donor: Donor }
 type Request = {
   id: string; blood_group: string; units: number; urgency: string; notes: string; created_at: string;
   acceptances: Acceptance[]
 }
 type Profile = { org_name: string }
 
-export function HospitalDashboardClient({ profile, requests }: { profile: Profile; requests: Request[] }) {
+export function HospitalDashboardClient({ profile, requests: initialRequests }: { profile: Profile; requests: Request[] }) {
   const [openRows, setOpenRows] = useState<Set<string>>(new Set())
+  const [requests, setRequests] = useState(initialRequests)
+  const [expandedActions, setExpandedActions] = useState<Set<string>>(new Set())
+  const [updating, setUpdating] = useState<Set<string>>(new Set())
 
   function toggleRow(id: string) {
     setOpenRows((prev) => {
@@ -23,8 +27,44 @@ export function HospitalDashboardClient({ profile, requests }: { profile: Profil
     })
   }
 
+  function showActions(acceptanceId: string) {
+    setExpandedActions((prev) => new Set(prev).add(acceptanceId))
+  }
+
+  async function updateStatus(acceptanceId: string, newStatus: 'donated' | 'rejected') {
+    setUpdating((prev) => new Set(prev).add(acceptanceId))
+
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('acceptances')
+      .update({ status: newStatus })
+      .eq('id', acceptanceId)
+
+    if (!error) {
+      setRequests((prev) =>
+        prev.map((req) => ({
+          ...req,
+          acceptances: req.acceptances.map((a) =>
+            a.id === acceptanceId ? { ...a, status: newStatus } : a
+          ),
+        }))
+      )
+      setExpandedActions((prev) => {
+        const next = new Set(prev)
+        next.delete(acceptanceId)
+        return next
+      })
+    }
+
+    setUpdating((prev) => {
+      const next = new Set(prev)
+      next.delete(acceptanceId)
+      return next
+    })
+  }
+
   const activeCount = requests.length
-  const matchedCount = requests.reduce((sum, r) => sum + r.acceptances.length, 0)
+  const matchedCount = requests.reduce((sum, r) => sum + r.acceptances.filter((a) => a.status !== 'rejected').length, 0)
   const donatedToday = requests.reduce(
     (sum, r) => sum + r.acceptances.filter((a) => a.status === 'donated').length, 0
   )
@@ -102,6 +142,7 @@ export function HospitalDashboardClient({ profile, requests }: { profile: Profil
                 {requests.map((req) => {
                   const accepted = req.acceptances.filter((a) => a.status === 'accepted')
                   const donated = req.acceptances.filter((a) => a.status === 'donated')
+                  const rejected = req.acceptances.filter((a) => a.status === 'rejected')
                   const isOpen = openRows.has(req.id)
 
                   return (
@@ -136,18 +177,59 @@ export function HospitalDashboardClient({ profile, requests }: { profile: Profil
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                  {accepted.map((a) => (
-                                    <tr key={a.id}>
-                                      <td className="px-2 py-1.5 font-medium text-gray-700">{a.donor.first_name} {a.donor.last_name}</td>
-                                      <td className="px-2 py-1.5 text-gray-400">{a.donor.mobile}</td>
-                                      <td className="px-2 py-1.5"><span className="bg-blue-100 text-blue-700 font-semibold px-1.5 py-0.5 rounded-full">Accepted</span></td>
-                                    </tr>
-                                  ))}
+                                  {accepted.map((a) => {
+                                    const isExpanded = expandedActions.has(a.id)
+                                    const isUpdating = updating.has(a.id)
+                                    return (
+                                      <tr key={a.id}>
+                                        <td className="px-2 py-1.5 font-medium text-gray-700">{a.donor.first_name} {a.donor.last_name}</td>
+                                        <td className="px-2 py-1.5 text-gray-400">{a.donor.mobile}</td>
+                                        <td className="px-2 py-1.5">
+                                          <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="bg-blue-100 text-blue-700 font-semibold px-1.5 py-0.5 rounded-full">Accepted</span>
+                                            {!isExpanded && (
+                                              <button
+                                                onClick={() => showActions(a.id)}
+                                                className="text-gray-400 hover:text-gray-600 text-xs underline"
+                                              >
+                                                update
+                                              </button>
+                                            )}
+                                          </div>
+                                          {isExpanded && (
+                                            <div className="flex gap-1 mt-1">
+                                              <button
+                                                disabled={isUpdating}
+                                                onClick={() => updateStatus(a.id, 'donated')}
+                                                className="bg-green-600 text-white text-xs px-2 py-0.5 rounded-full hover:bg-green-700 disabled:opacity-50"
+                                              >
+                                                ✓ Donated
+                                              </button>
+                                              <button
+                                                disabled={isUpdating}
+                                                onClick={() => updateStatus(a.id, 'rejected')}
+                                                className="bg-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full hover:bg-red-100 hover:text-red-600 disabled:opacity-50"
+                                              >
+                                                ✕ Reject
+                                              </button>
+                                            </div>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
                                   {donated.map((a) => (
                                     <tr key={a.id} className="opacity-60">
                                       <td className="px-2 py-1.5 font-medium text-gray-700">{a.donor.first_name} {a.donor.last_name}</td>
                                       <td className="px-2 py-1.5 text-gray-400">{a.donor.mobile}</td>
                                       <td className="px-2 py-1.5"><span className="bg-green-100 text-green-700 font-semibold px-1.5 py-0.5 rounded-full">Donated</span></td>
+                                    </tr>
+                                  ))}
+                                  {rejected.map((a) => (
+                                    <tr key={a.id} className="opacity-40">
+                                      <td className="px-2 py-1.5 font-medium text-gray-700">{a.donor.first_name} {a.donor.last_name}</td>
+                                      <td className="px-2 py-1.5 text-gray-400">{a.donor.mobile}</td>
+                                      <td className="px-2 py-1.5"><span className="bg-red-100 text-red-600 font-semibold px-1.5 py-0.5 rounded-full">Rejected</span></td>
                                     </tr>
                                   ))}
                                 </tbody>
