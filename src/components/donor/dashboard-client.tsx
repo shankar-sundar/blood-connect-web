@@ -33,6 +33,9 @@ export function DonorDashboardClient({ profile, requests, donations }: {
 }) {
   const [available, setAvailable] = useState(profile.available)
   const [acceptedId, setAcceptedId] = useState<string | null>(null)
+  const [urgencyFilter, setUrgencyFilter] = useState<string>('all')
+  const [page, setPage] = useState(0)
+  const PAGE_SIZE = 5
   const supabase = createClient()
 
   async function toggleAvailability() {
@@ -48,6 +51,21 @@ export function DonorDashboardClient({ profile, requests, donations }: {
 
   const firstName = profile.first_name ?? 'Donor'
   const donationCount = donations.length
+
+  const counts = {
+    all:       requests.length,
+    critical:  requests.filter((r) => r.urgency === 'critical').length,
+    urgent:    requests.filter((r) => r.urgency === 'urgent').length,
+    scheduled: requests.filter((r) => r.urgency === 'scheduled').length,
+  }
+  const filteredRequests = urgencyFilter === 'all' ? requests : requests.filter((r) => r.urgency === urgencyFilter)
+  const totalPages = Math.ceil(filteredRequests.length / PAGE_SIZE)
+  const pagedRequests = filteredRequests.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+
+  function applyFilter(f: string) {
+    setUrgencyFilter(f)
+    setPage(0)
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -126,13 +144,31 @@ export function DonorDashboardClient({ profile, requests, donations }: {
         <div className="grid md:grid-cols-3 gap-6">
           {/* Requests */}
           <div className="md:col-span-2 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-bold text-gray-900">Urgent Requests Near You</h2>
-              {requests.length > 0 && (
-                <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">
-                  {requests.length} new
-                </span>
-              )}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <h2 className="font-bold text-gray-900">Urgent Requests Near You</h2>
+                {requests.length > 0 && (
+                  <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">
+                    {counts.all} new
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2 flex-wrap text-xs">
+                {([
+                  { key: 'all',       label: 'All',       active: 'bg-gray-800 text-white', inactive: 'bg-gray-100 text-gray-500 hover:bg-gray-200' },
+                  { key: 'critical',  label: 'Critical',  active: 'bg-red-600 text-white',  inactive: 'bg-red-50 text-red-500 hover:bg-red-100' },
+                  { key: 'urgent',    label: 'Urgent',    active: 'bg-orange-500 text-white',inactive: 'bg-orange-50 text-orange-500 hover:bg-orange-100' },
+                  { key: 'scheduled', label: 'Scheduled', active: 'bg-blue-500 text-white',  inactive: 'bg-blue-50 text-blue-500 hover:bg-blue-100' },
+                ] as const).map(({ key, label, active, inactive }) => (
+                  <button
+                    key={key}
+                    onClick={() => applyFilter(key)}
+                    className={`px-3 py-1 rounded-full font-medium transition-colors ${urgencyFilter === key ? active : inactive}`}
+                  >
+                    {label} <span className="opacity-75">({counts[key]})</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {requests.length === 0 && (
@@ -141,7 +177,7 @@ export function DonorDashboardClient({ profile, requests, donations }: {
               </div>
             )}
 
-            {requests.map((req) => {
+            {pagedRequests.map((req) => {
               const urgency = (req.urgency ?? 'scheduled') as keyof typeof URGENCY_CONFIG
               const cfg = URGENCY_CONFIG[urgency] ?? URGENCY_CONFIG.scheduled
               const accepted = acceptedId === req.id
@@ -184,6 +220,28 @@ export function DonorDashboardClient({ profile, requests, donations }: {
                 </div>
               )
             })}
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  ← Prev
+                </button>
+                <span className="text-xs text-gray-400">
+                  Page {page + 1} of {totalPages} · {filteredRequests.length} requests
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={page === totalPages - 1}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
